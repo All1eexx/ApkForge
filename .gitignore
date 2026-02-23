@@ -1,0 +1,71 @@
+### --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.pyc
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+.installed.cfg
+*.egg
+.env
+
+### --- Android & Java Build Tools ---
+*.class
+*.dex
+*.jar
+*.ap_
+*.apk
+*.idsig
+
+build/
+bin/
+gen/
+out/
+outputs/
+temp_*/
+*_extracted/
+
+### --- Native Build (C/C++) ---
+.externalNativeBuild/
+.cxx/
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.dylib
+
+### --- Configuration & Secrets ---
+build_config.local.json
+local.properties
+.sdk_paths.json
+
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+secrets/
+
+### --- IDE & OS ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+.DS_Store
+Thumbs.db
+desktop.ini
+
+### --- Logs & Temps ---
+*.log
+logs/
+*.tmp
+*.temp
+*.bak

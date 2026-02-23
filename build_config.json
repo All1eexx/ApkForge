@@ -1,0 +1,117 @@
+{
+  "version": {
+    "code": 2,
+    "name": "2.0"
+  },
+  "app": {
+    "name": "My Application",
+    "package_id": "com.example.application"
+  },
+  "build": {
+    "type": "Debug",
+    "target_dex_index": 1,
+    "auto_multidex": false
+  },
+  "dex_placement": {
+    "prefer_existing": true,
+    "create_new_if_full": true,
+    "max_files_per_dex": 15000,
+    "space_threshold": 10000
+  },
+  "abi": {
+    "keep_only": [
+      "arm64-v8a"
+    ],
+    "remove_others": true,
+    "warn_if_missing": true
+  },
+  "custom_rules": {
+    "skip_files": [],
+    "force_multidex": false,
+    "min_sdk_version": 21
+  },
+  "paths": {
+    "tools": {
+      "apktool": "path/to/apktool.jar",
+      "baksmali": "path/to/baksmali.jar",
+      "smali": "path/to/smali.jar",
+      "android_sdk": null
+    },
+    "directories": {
+      "original_game": "path/to/folder/with/apk",
+      "modded": "path/to/output/folder",
+      "src": "path/to/your/sources",
+      "decompiled": "build/decompiled"
+    },
+    "source_structure": {
+      "java": "src/main/java",
+      "kotlin": "src/main/java",
+      "res": "src/main/res",
+      "cpp": "src/main/cpp",
+      "manifest": "src/main/AndroidManifest.xml",
+      "cmakelists": "src/main/cpp/CMakeLists.txt",
+      "assets": "src/main/assets"
+    },
+    "output": {
+      "build": "build/outputs",
+      "logs": "build/logs",
+      "temp": "build/temp"
+    },
+    "download_dependencies": {
+      "path": "tools/Download_Dependencies",
+      "libs": "tools/Download_Dependencies/libs"
+    },
+    "additional_smali_dirs": [],
+    "keystore": "keystore.json"
+  },
+  "pipeline_behavior": {
+    "stop_on_error": true,
+    "stop_on_warning": true,
+    "timeout_seconds": 90
+  },
+  "pipeline": [
+    "_print_header",
+    "_print_platform_info",
+    "_load_project_config",
+    "_load_keystore_config",
+    "_find_files",
+    "_cleanup_all",
+    "_prepare_decompile_directory",
+    "_run_apktool_decompile",
+    "_count_decompiled_files",
+    "_verify_decompile_success",
+    "_prepare_compilation_directories",
+    "_find_android_jar",
+    "_find_source_files",
+    "_copy_source_to_temp",
+    "_find_library_jars",
+    "_prepare_classpath",
+    "_compile_java_files",
+    "_compile_kotlin_files",
+    "_build_native_libs",
+    "_verify_compilation",
+    "_create_jar_from_classes",
+    "_combine_jars",
+    "_convert_jar_to_dex",
+    "_decompile_dex_to_smali",
+    "_analyze_apk_structure",
+    "_filter_abis",
+    "_copy_resources",
+    "_update_apktool_yml",
+    "_update_build_config",
+    "_update_strings",
+    "_update_manifest",
+    "_merge_custom_smali",
+    "_cleanup_temp_dirs",
+    "_build_unsigned_apk",
+    "_zipalign_apk",
+    "_sign_apk",
+    "_verify_signature",
+    "_cleanup_temp_files",
+    "_list_apks",
+    "_show_apk_info",
+    "_print_final_summary"
+  ],
+  "debug_pipeline": false,
+  "save_pipeline_report": false
+}
