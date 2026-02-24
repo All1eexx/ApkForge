@@ -744,7 +744,7 @@ class ApkForge:
         if self.library_jars:
             print(f"  [OK] Found {len(self.library_jars)} JAR files")
             total_size = sum(f.stat().st_size for f in self.library_jars) / (
-                1024 * 1024
+                    1024 * 1024
             )
             print(f"  [OK] Total size: {total_size:.2f} MB")
 
@@ -1012,9 +1012,9 @@ class ApkForge:
         print("=" * 40)
 
         input_apk = (
-            input_apk
-            or self.unsigned_apk_path
-            or self.paths["project_root"] / self.UNSIGNED_APK
+                input_apk
+                or self.unsigned_apk_path
+                or self.paths["project_root"] / self.UNSIGNED_APK
         )
         self.aligned_apk_path = self.paths["project_root"] / self.ALIGNED_APK
 
@@ -1035,9 +1035,9 @@ class ApkForge:
             raise RuntimeError("Keystore not loaded. Run _load_keystore_config first")
 
         input_apk = (
-            input_apk
-            or self.aligned_apk_path
-            or self.paths["project_root"] / self.ALIGNED_APK
+                input_apk
+                or self.aligned_apk_path
+                or self.paths["project_root"] / self.ALIGNED_APK
         )
 
         if output_apk is None:

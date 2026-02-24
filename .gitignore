@@ -56,6 +56,7 @@ secrets/
 ### --- IDE & OS ---
 .idea/
 .vscode/
+.vsc/
 *.swp
 *.swo
 *.iml

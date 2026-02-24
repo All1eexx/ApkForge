@@ -29,7 +29,7 @@ class JavaCompiler:
         return javac_path
 
     def compile(
-        self, java_files: List[Path], classpath: str, output_dir: Path
+            self, java_files: List[Path], classpath: str, output_dir: Path
     ) -> Dict[str, Any]:
         if not java_files:
             return {"compiled": 0, "output_dir": output_dir}

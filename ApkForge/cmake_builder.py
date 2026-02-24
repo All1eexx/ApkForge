@@ -21,7 +21,7 @@ from native_build_config import NativeBuildConfig
 
 class CMakeBuilder:
     def __init__(
-        self, cmake_path: str, ninja_path: str, logger: Optional[logging.Logger] = None
+            self, cmake_path: str, ninja_path: str, logger: Optional[logging.Logger] = None
     ):
         self.cmake_path = cmake_path
         self.ninja_path = ninja_path

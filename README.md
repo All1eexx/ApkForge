@@ -11,7 +11,7 @@
 
 <br/><br/>
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&duration=3000&pause=800&color=00FF88&center=true&vCenter=true&multiline=false&width=600&lines=Decompile+%E2%86%92+Modify+%E2%86%92+Sign;Java+%2F+Kotlin+%2F+C%2B%2B+%2F+Smali;No+rigid+structure.+Just+config.;Any+method+%E2%80%94+a+pipeline+step." alt="ApkForge typing animation showing workflow steps"/>
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&duration=3000&pause=800&color=00FF88&center=true&vCenter=true&multiline=false&width=700&lines=Decompile+%E2%86%92+Modify+%E2%86%92+Sign;Java+%2F+Kotlin+%2F+C%2B%2B+%2F+Smali;No+rigid+structure.+Just+config.;Any+method+from+any+.py+%E2%80%94+a+pipeline+step." alt="ApkForge typing animation showing workflow steps"/>
 
 </div>
 
@@ -59,7 +59,7 @@ file.
 ## ✨ Features
 
 ApkForge ships with a wide set of ready-made modules — but that's just the starting point. Any developer can write their
-own method and instantly add it to the `pipeline`. **The only limit is your imagination.**
+own method in **any `.py` file** and instantly add it to the `pipeline`. **The only limit is your imagination.**
 
 <br/>
 
@@ -83,7 +83,7 @@ own method and instantly add it to the `pipeline`. **The only limit is your imag
 |      ✏️ **SmaliUpdater**       | Updates `VERSION_CODE`, `VERSION_NAME`, `APPLICATION_ID` in smali |
 |     🔤 **StringsUpdater**      | Updates the app name in `strings.xml`                             |
 |      🗂️ **YamlUpdater**       | Updates version and APK filename in `apktool.yml`                 |
-|     🔧 **PipelineManager**     | Manages the pipeline — **any class method becomes a step**        |
+|     🔧 **PipelineManager**     | Executes any method or function from **any `.py` file** as a step |
 
 </div>
 
@@ -170,8 +170,7 @@ git clone https://github.com/All1eexx/ApkForge.git
 
 > 💡 All paths can be specified **relative to the folder where `build_config.json` lives** (e.g. `"tools/apktool.jar"`),
 > or as **absolute paths** (e.g. `"C:/Android/apktool.jar"` or `"/home/user/tools/apktool.jar"`). Both formats work on
-> all
-> platforms.
+> all platforms.
 
 <br/>
 
@@ -222,33 +221,149 @@ MyProject/                    ← build_config.json lives here
 
 ### How PipelineManager works
 
-On initialization, `PipelineManager` scans all methods of the `ApkForge` class using `inspect` and registers them as
-available steps. When you add a method name to `pipeline`, it gets called in the specified order:
+`PipelineManager` resolves and executes each step string from the `pipeline` list. A step can be a method from
+`main.py`, a standalone function from any module, or a class method from any module — with or without arguments:
 
 ```
-build_config.json              ApkForge class
-┌─────────────────┐            ┌──────────────────────────────┐
-│ "pipeline": [   │            │  def _run_apktool_decompile  │
-│   "_step_one",  │──scan──▶  │  def _compile_java_files     │
-│   "_step_two",  │            │  def _sign_apk               │
-│   "_my_custom"  │            │  def _my_custom  ← your code │
-│ ]               │            └──────────────────────────────┘
-└────────┬────────┘                         │
-         │                                  │
-         └──────────── execute ─────────────┘
-                    sequentially
+build_config.json                     Resolution
+┌───────────────────────────────┐     ┌──────────────────────────────────────────┐
+│ "pipeline": [                 │     │  "_print_header"                         │
+│   "_print_header",            │──▶  │    → ApkForge._print_header()            │
+│   "_find_files",              │     │                                          │
+│   "decompiler.Decompiler      │     │  "decompiler.Decompiler.decompile"       │
+│     .decompile",              │──▶  │    → Decompiler(...).decompile()         │
+│   "platform_utils             │     │                                          │
+│     .setup_utf8_environment", │──▶  │  "platform_utils.setup_utf8_environment" │
+│   "abi_filter.ABIFilter       │     │    → setup_utf8_environment()            │
+│     .filter('arm64-v8a')"     │     │                                          │
+│ ]                             │──▶  │  "abi_filter.ABIFilter.filter('arm64')"  │
+└───────────────────────────────┘     │    → ABIFilter(...).filter('arm64')      │
+                                      └──────────────────────────────────────────┘
 ```
 
-To add your own step, simply write a method in the `ApkForge` class:
+<br/>
+
+### Pipeline step formats
+
+There are three ways to write a step — all supported simultaneously in the same pipeline:
+
+**1. Method from `main.py` (ApkForge class):**
+
+```json
+"_print_header"
+"_find_files"
+"_load_project_config"
+```
+
+**2. Function from any `.py` file:**
+
+```json
+"platform_utils.setup_utf8_environment"
+"sdk_detector.SDKDetector.find_sdk"
+```
+
+**3. Class method from any `.py` file — with optional arguments:**
+
+```json
+"decompiler.Decompiler.decompile"
+"abi_filter.ABIFilter.filter('arm64-v8a')"
+"strings_updater.StringsUpdater.update_app_name('My App')"
+"smali_updater.SmaliUpdater.update_build_config(2, '2.0', 'com.example', 'release')"
+"dex_converter.DexConverter.convert_to_dex"
+```
+
+> 💡 Arguments support all Python literal types: strings `'hello'`, numbers `42`, booleans `True`, `None`, lists
+`[1, 2]`, and dicts `{'key': 'val'}`.
+
+<br/>
+
+**Full example pipeline:**
+
+```json
+"pipeline": [
+  "_print_header",
+  "_print_platform_info",
+  "_load_project_config",
+  "_load_keystore_config",
+  "_find_files",
+  "_cleanup_all",
+  "_prepare_decompile_directory",
+  "_run_apktool_decompile",
+  "_count_decompiled_files",
+  "_verify_decompile_success",
+  "_analyze_apk_structure",
+  "abi_filter.ABIFilter.filter",
+  "_copy_resources",
+  "_update_apktool_yml",
+  "_update_build_config",
+  "strings_updater.StringsUpdater.update_app_name('My App')",
+  "_update_manifest",
+  "_build_unsigned_apk",
+  "_zipalign_apk",
+  "_sign_apk",
+  "_verify_signature",
+  "_print_final_summary"
+]
+```
+
+<br/>
+
+### Instance auto-creation
+
+When calling a class method (e.g. `"abi_filter.ABIFilter.filter"`), `PipelineManager` automatically instantiates the
+class by mapping common constructor parameter names to build state:
+
+| Constructor parameter | Resolved from                            |
+|:----------------------|:-----------------------------------------|
+| `modded_dir`          | `build_tool.paths["modded_dir"]`         |
+| `android_sdk`         | `build_tool.paths["android_sdk"]`        |
+| `paths`               | `build_tool.paths`                       |
+| `config`              | `build_tool.config`                      |
+| `apktool_jar`         | `build_tool.found_files["apktool_jar"]`  |
+| `baksmali_jar`        | `build_tool.found_files["baksmali_jar"]` |
+| `source_apk`          | `build_tool.found_files["source_apk"]`   |
+| `logger`              | `None` (uses module logger)              |
+
+If a constructor requires a parameter not in this list, pass the arguments directly in the step string:
+
+```json
+"my_module.MyClass.my_method('arg1', 'arg2')"
+```
+
+Class instances are **cached** — each class is instantiated only once per pipeline run.
+
+<br/>
+
+### Adding your own step
+
+You can extend the pipeline in two ways:
+
+**Option A — method in `main.py`** (classic, has access to full `self` state):
 
 ```python
 def _my_custom_step(self):
-    print("My custom step!")
-    # any logic: file operations, calling external tools, etc.
+    print("My custom logic!")
+    # full access to self.paths, self.config, self.found_files, etc.
 ```
 
 ```json
 "pipeline": ["...", "_my_custom_step", "..."]
+```
+
+**Option B — standalone module** (reusable, testable independently):
+
+```python
+# my_tool.py
+class MyTool:
+    def __init__(self, modded_dir):  # auto-resolved
+        self.modded_dir = modded_dir
+
+    def process(self, mode='fast'):
+        print(f"Processing in {mode} mode: {self.modded_dir}")
+```
+
+```json
+"pipeline": ["...", "my_tool.MyTool.process('thorough')", "..."]
 ```
 
 <br/>
@@ -287,7 +402,7 @@ def _my_custom_step(self):
          ▼
   ┌──────────────────────────────────────────────────────────────┐
   │  BUILD                                                       │
-  │  apktool b path/to/output/folder → unsigned.apk                       │
+  │  apktool b path/to/output/folder → unsigned.apk             │
   └──────────────────────────────┬───────────────────────────────┘
                                  │
                                  ▼
@@ -490,7 +605,7 @@ Supported ABIs: `armeabi` · `armeabi-v7a` · `arm64-v8a` · `x86` · `x86_64` �
   "_cleanup_all",
   "_run_apktool_decompile",
   "_analyze_apk_structure",
-  "_filter_abis",
+  "abi_filter.ABIFilter.filter",
   "_copy_resources",
   "_update_apktool_yml",
   "_update_build_config",
@@ -505,8 +620,14 @@ Supported ABIs: `armeabi` · `armeabi-v7a` · `arm64-v8a` · `x86` · `x86_64` �
 ]
 ```
 
-Any **method of the `ApkForge` class** — built-in or custom — can be listed here. `PipelineManager` automatically
-discovers all methods at startup.
+Each entry is a step string. Three formats are supported:
+
+| Format                        | Example                                      | Resolves to                          |
+|:------------------------------|:---------------------------------------------|:-------------------------------------|
+| `"_method"`                   | `"_find_files"`                              | `ApkForge._find_files()`             |
+| `"module.function"`           | `"platform_utils.setup_utf8_environment"`    | `setup_utf8_environment()`           |
+| `"module.Class.method"`       | `"abi_filter.ABIFilter.filter"`              | `ABIFilter(...).filter()`            |
+| `"module.Class.method(args)"` | `"abi_filter.ABIFilter.filter('arm64-v8a')"` | `ABIFilter(...).filter('arm64-v8a')` |
 
 <br/>
 
@@ -535,7 +656,7 @@ discovers all methods at startup.
 ```
 main.py (ApkForge)
 │
-├── pipeline_manager.py      — method discovery, pipeline execution
+├── pipeline_manager.py      — resolves & executes any method/function from any .py
 ├── project_config.py        — load & validate build_config.json
 ├── path_manager.py          — path resolution, build_config.json lookup
 ├── sdk_detector.py          — Android SDK auto-detection
@@ -573,6 +694,9 @@ main.py (ApkForge)
 ├── config.py                — keystore.json loading
 └── platform_utils.py        — cross-platform utilities
 ```
+
+> All of the above modules — and any `.py` file you create — can be called directly from the pipeline without touching
+`main.py`.
 
 <br/>
 
@@ -642,21 +766,55 @@ The `_merge_custom_smali` step will copy them into the correct DEX.
 </details>
 
 <details>
+<summary><b>How do I call a method from another .py file in the pipeline?</b></summary>
+
+Use the `"module.ClassName.method"` format — no registration needed:
+
+```json
+"pipeline": [
+  "abi_filter.ABIFilter.filter('arm64-v8a')",
+  "strings_updater.StringsUpdater.update_app_name('My App')",
+  "dex_converter.DexConverter.find_d8",
+  "platform_utils.setup_utf8_environment"
+]
+```
+
+The file just needs to exist on the Python path (same directory as `main.py` is fine). Class instances are created
+automatically and cached for the duration of the pipeline run.
+
+</details>
+
+<details>
 <summary><b>How do I extend ApkForge with custom logic?</b></summary>
 
-Add a method to the `ApkForge` class in `main.py` and reference it in `pipeline`:
+**Option A — add to `main.py`** (full access to build state via `self`):
 
 ```python
 def _my_step(self):
-    # your logic here
-    pass
+    print(f"Working in: {self.paths['modded_dir']}")
 ```
 
 ```json
 "pipeline": ["...", "_my_step", "..."]
 ```
 
-`PipelineManager` picks it up automatically — no registration needed.
+**Option B — create a new `.py` file** (reusable, testable):
+
+```python
+# my_module.py
+class MyTool:
+    def __init__(self, modded_dir):
+        self.modded_dir = modded_dir
+
+    def run(self, mode='fast'):
+        print(f"Running in {mode} mode")
+```
+
+```json
+"pipeline": ["...", "my_module.MyTool.run('thorough')", "..."]
+```
+
+No registration, no imports needed in `main.py`.
 
 </details>
 
