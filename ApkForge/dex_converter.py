@@ -14,7 +14,7 @@ import platform
 from pathlib import Path
 from typing import List, Optional
 
-from platform_utils import run_command_checked, setup_utf8_environment
+from platform_utils import setup_utf8_environment
 
 
 class DexConverter:
@@ -24,22 +24,18 @@ class DexConverter:
         self.system = platform.system().lower()
         setup_utf8_environment()
 
-    def find_d8(self) -> Optional[str]:
+    def find_d8(self) -> str:
         if self.logger:
             self.logger.info("    Searching for D8/DX compiler...")
 
         build_tools_dir = self._find_build_tools()
-
         if not build_tools_dir:
             raise FileNotFoundError(
-                "Android build-tools not found. Please install Android SDK build-tools:\n"
-                "1. Open Android Studio → SDK Manager → SDK Tools\n"
-                "2. Install 'Android SDK Build-Tools'\n"
-                "3. Set ANDROID_HOME environment variable"
+                "Android build-tools not found. Please install Android SDK build-tools.\n"
+                "Make sure ANDROID_HOME or ANDROID_SDK_ROOT is set correctly."
             )
 
         build_tools_versions = self._collect_build_tools_versions(build_tools_dir)
-
         if not build_tools_versions:
             raise FileNotFoundError(f"No build-tools versions found in {build_tools_dir}")
 
@@ -47,7 +43,28 @@ class DexConverter:
         if self.logger:
             self.logger.info(f"    Using build-tools: {build_tools_version.name}")
 
-        return self._locate_d8_tool(build_tools_version)
+        d8_jar = build_tools_version / "d8.jar"
+        if d8_jar.exists():
+            if self.logger:
+                self.logger.info("    Found d8.jar")
+            return str(d8_jar)
+
+        if self.system == "windows":
+            candidates = ["d8.bat", "d8.cmd", "d8.exe", "d8", "dx.bat", "dx.cmd", "dx.exe", "dx"]
+        else:
+            candidates = ["d8", "dx"]
+
+        for candidate in candidates:
+            tool_path = build_tools_version / candidate
+            if tool_path.exists():
+                if self.logger:
+                    self.logger.info(f"    Found: {candidate}")
+                return str(tool_path)
+
+        raise FileNotFoundError(
+            f"D8/DX not found in {build_tools_version}\n"
+            "Please ensure Android SDK build-tools are properly installed."
+        )
 
     def _find_build_tools(self) -> Optional[Path]:
         if self.android_sdk and self.android_sdk.exists():
@@ -136,27 +153,31 @@ class DexConverter:
 
         d8_path = self.find_d8()
 
-        cmd = [
-            d8_path,
-            str(combined_jar),
-            "--lib",
-            str(android_jar),
-            "--output",
-            str(output_dir),
-            "--min-api",
-            str(min_api),
-        ]
+        if d8_path.endswith('.jar'):
+            cmd = ['java', '-jar', d8_path, str(combined_jar), '--lib', str(android_jar),
+                   '--output', str(output_dir), '--min-api', str(min_api)]
+        elif self.system == "windows":
+            if d8_path.endswith('.bat') or d8_path.endswith('.cmd'):
+                cmd = ['cmd', '/c', d8_path, str(combined_jar), '--lib', str(android_jar),
+                       '--output', str(output_dir), '--min-api', str(min_api)]
+            else:
+                cmd = [d8_path, str(combined_jar), '--lib', str(android_jar),
+                       '--output', str(output_dir), '--min-api', str(min_api)]
+        else:
+            cmd = [d8_path, str(combined_jar), '--lib', str(android_jar),
+                   '--output', str(output_dir), '--min-api', str(min_api)]
 
-        run_command_checked(cmd, "D8 dex conversion failed")
-
-        if self.logger:
-            self.logger.info("    DEX conversion completed")
+        from platform_utils import run_java_tool
+        run_java_tool(cmd, "D8 dex conversion failed", "d8")
 
         dex_files = list(output_dir.glob("*.dex"))
         if not dex_files:
             raise RuntimeError("No DEX files generated")
 
         if self.logger:
-            self.logger.info(f"    Found {len(dex_files)} DEX file(s)")
+            self.logger.info(f"    Generated {len(dex_files)} DEX files")
+            for dex in dex_files:
+                size = dex.stat().st_size / 1024
+                self.logger.info(f"      - {dex.name} ({size:.2f} KB)")
 
         return dex_files
