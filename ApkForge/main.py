@@ -73,6 +73,32 @@ class ApkForge:
         self.config = None
         self._setup_output()
 
+    @staticmethod
+    def setup_cross_platform():
+        import sys
+        import os
+        import platform
+        from pathlib import Path
+
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+        os.environ["JAVA_TOOL_OPTIONS"] = "-Dfile.encoding=UTF-8"
+
+        if platform.system() == "Windows":
+            os.environ["PYTHONUTF8"] = "1"
+
+            python_scripts = Path(sys.executable).parent / "Scripts"
+            if python_scripts.exists():
+                os.environ["PATH"] = (
+                        str(python_scripts) + os.pathsep + os.environ.get("PATH", "")
+                )
+
+        else:
+            os.environ["LC_ALL"] = "C.UTF-8"
+            os.environ["LANG"] = "C.UTF-8"
+
     def has_warnings(self):
         return self._warnings_occurred
 
@@ -1238,6 +1264,8 @@ class ApkForge:
 
 def main():
     import sys
+
+    ApkForge.setup_cross_platform()
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
