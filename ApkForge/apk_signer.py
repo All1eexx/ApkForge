@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Tuple
 
 from config import KeystoreConfig
-from platform_utils import run_command, setup_utf8_environment
+from platform_utils import run_command, setup_utf8_environment, run_java_tool
 
 
 class ApkSigner:
@@ -122,28 +122,30 @@ class ApkSigner:
         if self.logger:
             self.logger.info("  [OK] APK zipaligned")
 
-    def sign(
-            self,
-            apksigner: Path,
-            input_apk: Path,
-            output_apk: Path,
-            keystore: KeystoreConfig,
-    ):
+    def sign(self, apksigner: Path, input_apk: Path, output_apk: Path, keystore: KeystoreConfig):
         if self.logger:
             self.logger.info("  Signing APK...")
 
         sign_cmd = self._build_command(apksigner, input_apk, output_apk, keystore)
 
-        result = run_command(sign_cmd)
-        self._check_result(result, "APK signing")
+        run_java_tool(sign_cmd, "APK signing failed", "apksigner")
 
         if self.logger:
             self.logger.info("  [OK] APK signed successfully")
 
+    def verify(self, apksigner: Path, signed_apk: Path):
+        if self.logger:
+            self.logger.info("  Verifying APK signature...")
+
+        verify_cmd = self._build_verify_command(apksigner, signed_apk)
+
+        run_java_tool(verify_cmd, "APK verification failed", "apksigner")
+
+        if self.logger:
+            self.logger.info("  [OK] APK signature verified")
+
     @staticmethod
-    def _build_command(
-            apksigner: Path, input_apk: Path, output_apk: Path, keystore: KeystoreConfig
-    ) -> list:
+    def _build_command(apksigner: Path, input_apk: Path, output_apk: Path, keystore: KeystoreConfig) -> list:
         base_cmd = (
             ["java", "-jar", str(apksigner)]
             if apksigner.suffix == ".jar"
@@ -152,58 +154,32 @@ class ApkSigner:
 
         sign_args = [
             "sign",
-            "--ks",
-            str(keystore.path),
-            "--ks-key-alias",
-            keystore.alias,
-            "--ks-pass",
-            f"pass:{keystore.password}",
-            "--key-pass",
-            f"pass:{keystore.key_password}",
-            "--v1-signing-enabled",
-            "true",
-            "--v2-signing-enabled",
-            "true",
-            "--v3-signing-enabled",
-            "true",
-            "--v4-signing-enabled",
-            "true",
-            "--out",
-            str(output_apk),
+            "--ks", str(keystore.path),
+            "--ks-key-alias", keystore.alias,
+            "--ks-pass", f"pass:{keystore.password}",
+            "--key-pass", f"pass:{keystore.key_password}",
+            "--v1-signing-enabled", "true",
+            "--v2-signing-enabled", "true",
+            "--v3-signing-enabled", "true",
+            "--v4-signing-enabled", "true",
+            "--out", str(output_apk),
             str(input_apk),
         ]
 
         return base_cmd + sign_args
 
-    def verify(self, apksigner: Path, signed_apk: Path):
-        if self.logger:
-            self.logger.info("  Verifying APK signature...")
-
-        verify_cmd = (
-            [
-                "java",
-                "-jar",
-                str(apksigner),
-                "verify",
-                "--verbose",
-                "--print-certs",
-                str(signed_apk),
+    @staticmethod
+    def _build_verify_command(apksigner: Path, signed_apk: Path) -> list:
+        if apksigner.suffix == ".jar":
+            return [
+                "java", "-jar", str(apksigner),
+                "verify", "--verbose", "--print-certs", str(signed_apk)
             ]
-            if apksigner.suffix == ".jar"
-            else [
+        else:
+            return [
                 str(apksigner),
-                "verify",
-                "--verbose",
-                "--print-certs",
-                str(signed_apk),
+                "verify", "--verbose", "--print-certs", str(signed_apk)
             ]
-        )
-
-        result = run_command(verify_cmd)
-        self._check_result(result, "APK verification")
-
-        if self.logger:
-            self.logger.info("  [OK] APK signature verified")
 
     @staticmethod
     def _check_result(result, step_name):
