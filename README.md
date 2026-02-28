@@ -4,7 +4,6 @@
 
 <br/>
 
-<a href="https://github.com/All1eexx/ApkForge"><img src="https://img.shields.io/badge/version-2.0.0-00ff88?style=for-the-badge&logo=github&logoColor=white&labelColor=0d0d0d" /></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-00ff88?style=for-the-badge&logo=open-source-initiative&logoColor=white&labelColor=0d0d0d" /></a>
 <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.8%2B-00ff88?style=for-the-badge&logo=python&logoColor=white&labelColor=0d0d0d" /></a>
 <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-00ff88?style=for-the-badge&logo=linux&logoColor=white&labelColor=0d0d0d" />
