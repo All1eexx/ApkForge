@@ -914,6 +914,28 @@ class ApkForge:
         self.combined_jar = combined
         return combined
 
+
+    def _analyze_dex_method_counts(self):
+        print("\n" + "=" * 50)
+        print("Analyzing DEX Method Counts")
+        print("=" * 50)
+
+        if not self.apk_analyzer:
+            self.apk_analyzer = ApkAnalyzer(
+                self.paths["modded_dir"],
+                config=self.config.raw_config if self.config else None,
+            )
+
+        warnings = self.apk_analyzer.analyze_dex_method_counts(self.config)
+
+        if warnings:
+            if self.config.auto_split_dex:
+                print("\n  [INFO] Auto-split DEX is enabled - will create new DEX if needed")
+            else:
+                print("\n  [WARNING] Consider enabling auto_split_dex or increasing max_methods_per_dex")
+
+        return warnings
+
     def _convert_jar_to_dex(self):
         if not hasattr(self, "combined_jar"):
             raise RuntimeError("Combined JAR not created. Run _combine_jars first")
