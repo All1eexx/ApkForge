@@ -78,9 +78,8 @@ class Decompiler:
         error_output = result.stderr if result.stderr else result.stdout
         return error_output if error_output else "No error output"
 
-    def _truncate_error(self, error_output):
-        if len(error_output) > self.MAX_ERROR_OUTPUT_LENGTH:
-            return error_output[: self.MAX_ERROR_OUTPUT_LENGTH] + "..."
+    @staticmethod
+    def _truncate_error(error_output):
         return error_output
 
     def _print_output(self, result):
