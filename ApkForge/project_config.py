@@ -31,6 +31,9 @@ class ProjectConfig:
     prefer_existing_dex: bool
     create_new_dex_if_full: bool
     max_files_per_dex: int
+    max_methods_per_dex: int
+    auto_split_dex: bool
+    method_count_check: bool
 
     skip_files: List[str]
     force_multidex: bool
@@ -62,6 +65,7 @@ class ProjectConfig:
                 data = json.load(f)
 
             abi_config = data.get("abi", {})
+            dex_placement = data.get("dex_placement", {})
 
             config = cls(
                 version_code=data["version"]["code"],
@@ -71,9 +75,12 @@ class ProjectConfig:
                 build_type=data["build"]["type"],
                 target_dex_index=data["build"]["target_dex_index"],
                 auto_multidex=data["build"]["auto_multidex"],
-                prefer_existing_dex=data["dex_placement"]["prefer_existing"],
-                create_new_dex_if_full=data["dex_placement"]["create_new_if_full"],
-                max_files_per_dex=data["dex_placement"]["max_files_per_dex"],
+                prefer_existing_dex=dex_placement.get("prefer_existing", True),
+                create_new_dex_if_full=dex_placement.get("create_new_if_full", True),
+                max_files_per_dex=dex_placement.get("max_files_per_dex", 15000),
+                max_methods_per_dex=dex_placement.get("max_methods_per_dex", 65536),
+                auto_split_dex=dex_placement.get("auto_split_dex", True),
+                method_count_check=dex_placement.get("method_count_check", True),
                 skip_files=data["custom_rules"]["skip_files"],
                 force_multidex=data["custom_rules"]["force_multidex"],
                 min_sdk_version=data["custom_rules"]["min_sdk_version"],
@@ -100,6 +107,8 @@ class ProjectConfig:
         print(f"    App: {self.app_name} ({self.application_id})")
         print(f"    Build: {self.build_type}, target DEX: {self.target_dex_index}")
         print(f"    Auto multidex: {self.auto_multidex}")
+        print(f"    DEX limits: {self.max_methods_per_dex} methods, {self.max_files_per_dex} files")
+        print(f"    Auto-split DEX: {self.auto_split_dex}")
 
         if self.abi_keep_only:
             print(f"    Keeping ABIs: {', '.join(self.abi_keep_only)}")
