@@ -352,23 +352,50 @@ class PipelineManager:
         return instance
 
     def _auto_create_instance(self, cls, class_name: str) -> Any:
+        params = self._get_constructor_params(cls)
 
+        if not params:
+            return self._create_instance_without_args(cls, class_name)
+
+        return self._create_instance_with_matched_params(cls, params, class_name)
+
+    @staticmethod
+    def _get_constructor_params(cls) -> List[inspect.Parameter]:
         try:
             sig = inspect.signature(cls.__init__)
-            params = [
-                p
-                for name, p in sig.parameters.items()
+            return [
+                p for name, p in sig.parameters.items()
                 if name != "self" and p.default is inspect.Parameter.empty
             ]
         except (ValueError, TypeError):
-            params = []
+            return []
 
-        if not params:
-            try:
-                return cls()
-            except Exception as e:
-                raise RuntimeError(f"Cannot instantiate '{class_name}()': {e}")
-        param_map = {
+    @staticmethod
+    def _create_instance_without_args(cls, class_name: str) -> Any:
+        try:
+            return cls()
+        except Exception as e:
+            raise RuntimeError(f"Cannot instantiate '{class_name}()': {e}")
+
+    def _create_instance_with_matched_params(self, cls, params: List[inspect.Parameter], class_name: str) -> Any:
+        resource_map = self._build_resource_map()
+
+        constructor_args = []
+        unknown_params = []
+
+        for p in params:
+            if p.name in resource_map:
+                constructor_args.append(resource_map[p.name]())
+            else:
+                unknown_params.append(p.name)
+
+        if unknown_params:
+            self._raise_parameter_error(class_name, unknown_params)
+
+        return self._instantiate_with_args(cls, constructor_args, class_name)
+
+    def _build_resource_map(self) -> Dict[str, Callable[[], Any]]:
+        return {
             "modded_dir": lambda: self.build_tool.paths.get("modded_dir"),
             "android_sdk": lambda: self.build_tool.paths.get("android_sdk"),
             "paths": lambda: self.build_tool.paths,
@@ -391,25 +418,26 @@ class PipelineManager:
             ),
         }
 
-        constructor_args = []
-        for p in params:
-            if p.name in param_map:
-                constructor_args.append(param_map[p.name]())
-            else:
-                raise RuntimeError(
-                    f"Cannot auto-instantiate '{class_name}'.\n"
-                    f"  Unknown required parameter: '{p.name}'\n"
-                    f"  Pass constructor args directly in the pipeline step:\n"
-                    f"  e.g. \"module.{class_name}.method('arg1', 'arg2')\"\n"
-                    f"  Or instantiate it manually and add it to the build_tool."
-                )
+    @staticmethod
+    def _raise_parameter_error(class_name: str, unknown_params: List[str]):
+        error_msg = (
+            f"Cannot auto-instantiate '{class_name}'.\n"
+            f"  Unknown required parameter(s): {', '.join(unknown_params)}\n"
+            f"  Pass constructor args directly in the pipeline step:\n"
+            f"  e.g. \"module.{class_name}.method('arg1', 'arg2')\"\n"
+            f"  Or instantiate it manually and add it to the build_tool."
+        )
+        raise RuntimeError(error_msg)
 
+    @staticmethod
+    def _instantiate_with_args(cls, args: List[Any], class_name: str) -> Any:
         try:
-            return cls(*constructor_args)
+            return cls(*args)
         except Exception as e:
+            arg_types = [type(a).__name__ for a in args]
             raise RuntimeError(
                 f"Failed to instantiate '{class_name}' "
-                f"with args {[type(a).__name__ for a in constructor_args]}: {e}"
+                f"with args {arg_types}: {e}"
             )
 
     def _import_module(self, module_name: str) -> Any:
