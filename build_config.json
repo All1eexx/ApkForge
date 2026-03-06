@@ -9,14 +9,17 @@
   },
   "build": {
     "type": "Debug",
-    "target_dex_index": 1,
+    "target_dex_index": 2,
     "auto_multidex": false
   },
   "dex_placement": {
     "prefer_existing": true,
     "create_new_if_full": true,
     "max_files_per_dex": 15000,
-    "space_threshold": 10000
+    "space_threshold": 10000,
+    "max_methods_per_dex": 65536,
+    "auto_split_dex": true,
+    "method_count_check": true
   },
   "abi": {
     "keep_only": [
@@ -66,7 +69,7 @@
   },
   "pipeline_behavior": {
     "stop_on_error": true,
-    "stop_on_warning": true,
+    "stop_on_warning": false,
     "timeout_seconds": 90
   },
   "pipeline": [
@@ -95,6 +98,7 @@
     "_convert_jar_to_dex",
     "_decompile_dex_to_smali",
     "_analyze_apk_structure",
+    "_analyze_dex_method_counts",
     "_filter_abis",
     "_copy_resources",
     "_update_apktool_yml",
