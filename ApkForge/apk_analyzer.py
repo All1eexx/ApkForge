@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from manifest_manager import ManifestManager
+from dex_method_counter import DexMethodCounter
 
 
 class ApkAnalyzer:
@@ -185,6 +186,39 @@ class ApkAnalyzer:
         print(f"    Selected: {best_dir.name}")
 
         return best_dir, best_dir.name
+
+    def analyze_dex_method_counts(self, config) -> List[str]:
+
+        print("\n  Analyzing DEX method counts...")
+
+        counter = DexMethodCounter(self.modded_dir)
+        analysis = counter.analyze_all_dex_directories()
+
+        counter.print_method_summary(analysis)
+
+        if config.method_count_check:
+            warnings = counter.validate_dex_method_counts(analysis, config)
+            if warnings:
+                print("\n  [WARNINGS] DEX method limit issues:")
+                for warning in warnings:
+                    print(f"    {warning}")
+            else:
+                print("  [OK] All DEX files within method limits")
+
+            return warnings
+
+        return []
+
+    def suggest_dex_placement_with_method_count(self,
+                                                new_smali_files: List[Path],
+                                                config) -> Tuple[Path, str]:
+        counter = DexMethodCounter(self.modded_dir)
+
+        existing_info = {}
+        for dex_dir in self.dex_directories:
+            existing_info[dex_dir.name] = counter.count_methods_in_directory(dex_dir)
+
+        return counter.find_dex_for_new_files(new_smali_files, existing_info, config)
 
     def update_manifest_for_multidex(self) -> bool:
         if self.dex_count <= 1:
