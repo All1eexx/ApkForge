@@ -12,7 +12,7 @@
 import platform
 import shutil
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, List, Optional
 
 from config import KeystoreConfig
 from platform_utils import run_command, setup_utf8_environment, run_java_tool
@@ -42,7 +42,7 @@ class ApkSigner:
         return build_tools
 
     @staticmethod
-    def _collect_build_tools(build_tools_dir: Path):
+    def _collect_build_tools(build_tools_dir: Path) -> List[Path]:
         versions = []
         for item in build_tools_dir.iterdir():
             if item.is_dir():
@@ -55,8 +55,8 @@ class ApkSigner:
         return versions
 
     @staticmethod
-    def _select_latest_build_tools(versions):
-        def version_key(build_path):
+    def _select_latest_build_tools(versions: List[Path]) -> Path:
+        def version_key(build_path: Path) -> tuple:
             parts = build_path.name.split(".")
             try:
                 return (
@@ -82,26 +82,46 @@ class ApkSigner:
 
         return zipalign, apksigner
 
-    def _find_tool(self, build_tools: Path, tool_name: str, alternatives: list) -> Path:
+    def _find_tool(self, build_tools: Path, tool_name: str, alternatives: List[str]) -> Path:
+
+        tool_path = self._find_tool_in_build_tools(build_tools, tool_name, alternatives)
+        if tool_path is not None:
+            return tool_path
+
+        tool_path = self._find_tool_in_path(tool_name)
+        if tool_path is not None:
+            return tool_path
+
+        self._raise_tool_not_found(tool_name)
+        return Path()
+
+    @staticmethod
+    def _find_tool_in_build_tools(build_tools: Path, tool_name: str, alternatives: List[str]) -> Optional[Path]:
         tool_path = build_tools / tool_name
+        if tool_path.exists():
+            return tool_path
 
-        if not tool_path.exists():
-            for alt_name in alternatives:
-                alt_path = build_tools / alt_name
-                if alt_path.exists():
-                    tool_path = alt_path
-                    break
+        for alt_name in alternatives:
+            alt_path = build_tools / alt_name
+            if alt_path.exists():
+                return alt_path
 
-        if not tool_path.exists():
-            which_path = shutil.which(tool_name.replace(".exe", "").replace(".bat", ""))
-            if which_path:
-                tool_path = Path(which_path)
-                if self.logger:
-                    self.logger.info(f"  Found {tool_name} in PATH: {tool_path}")
-            else:
-                raise FileNotFoundError(f"{tool_name} not found")
+        return None
 
-        return tool_path
+    def _find_tool_in_path(self, tool_name: str) -> Optional[Path]:
+        base_name = tool_name.replace(".exe", "").replace(".bat", "")
+        which_path = shutil.which(base_name)
+
+        if which_path:
+            tool_path = Path(which_path)
+            if self.logger:
+                self.logger.info(f"  Found {tool_name} in PATH: {tool_path}")
+            return tool_path
+
+        return None
+
+    def _raise_tool_not_found(self, tool_name: str):
+        raise FileNotFoundError(f"{tool_name} not found")
 
     def zipalign(self, zipalign: Path, input_apk: Path, output_apk: Path):
         if self.logger:
@@ -145,7 +165,7 @@ class ApkSigner:
             self.logger.info("  [OK] APK signature verified")
 
     @staticmethod
-    def _build_command(apksigner: Path, input_apk: Path, output_apk: Path, keystore: KeystoreConfig) -> list:
+    def _build_command(apksigner: Path, input_apk: Path, output_apk: Path, keystore: KeystoreConfig) -> List[str]:
         base_cmd = (
             ["java", "-jar", str(apksigner)]
             if apksigner.suffix == ".jar"
@@ -169,7 +189,7 @@ class ApkSigner:
         return base_cmd + sign_args
 
     @staticmethod
-    def _build_verify_command(apksigner: Path, signed_apk: Path) -> list:
+    def _build_verify_command(apksigner: Path, signed_apk: Path) -> List[str]:
         if apksigner.suffix == ".jar":
             return [
                 "java", "-jar", str(apksigner),
