@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from platform_utils import run_command_checked, setup_utf8_environment
+from project_config import ProjectConfig
 
 
 class SmaliDecompiler:
@@ -25,60 +26,61 @@ class SmaliDecompiler:
         self.logger = logger
         setup_utf8_environment()
 
-    def decompile(
-            self, dex_files: List[Path], target_dex_index: Optional[int] = None
-    ) -> List[str]:
+    def decompile(self, dex_files: List[Path], _target_dex_index: Optional[int] = None,
+                  _config: Optional[ProjectConfig] = None) -> List[str]:
         if self.logger:
             self.logger.info("  Decompiling DEX to smali...")
 
-        existing_smali, smali_dirs = self._get_existing_smali_dirs()
+        smali_dirs = self._get_existing_smali_indices()
         created_dirs = set()
 
-        use_auto_detection = target_dex_index is None or target_dex_index == 0
+        max_index = max(smali_dirs) if smali_dirs else 0
+        next_index = max_index + 1
 
         for i, dex_file in enumerate(dex_files):
-            if not use_auto_detection:
-                target_dir = self._get_target_directory(
-                    target_dex_index, existing_smali
-                )
-            else:
-                target_dir = self._get_auto_detected_directory(smali_dirs, i)
-                target_dir.mkdir(exist_ok=True, parents=True)
-
+            target_dir = self.modded_dir / f"smali_classes{next_index + i}"
+            target_dir.mkdir(exist_ok=True, parents=True)
             created_dirs.add(target_dir.name)
-
             self._decompile_single_dex(dex_file, target_dir)
 
         self._print_summary(dex_files, created_dirs)
-
         return list(created_dirs)
 
-    def _get_existing_smali_dirs(self):
-        existing_smali = []
-        smali_dirs = []
+    def _get_existing_smali_indices(self) -> List[int]:
+        smali_indices = []
 
         for item in self.modded_dir.iterdir():
-            if item.is_dir() and item.name.startswith("smali"):
-                existing_smali.append(item.name)
+            if not item.is_dir() or not item.name.startswith("smali"):
+                continue
 
-                if item.name == "smali":
-                    smali_dirs.append(1)
-                else:
-                    try:
-                        index = int(item.name.replace("smali_classes", ""))
-                        smali_dirs.append(index)
-                    except ValueError:
-                        continue
+            index = self._parse_smali_index(item.name)
+            if index is not None:
+                smali_indices.append(index)
 
-        smali_dirs.sort()
+        smali_indices.sort()
 
         if self.logger:
-            dirs_str = ", ".join(existing_smali) if existing_smali else "none"
+            dirs_str = ", ".join([f"smali{self._format_index(i)}" for i in smali_indices]) if smali_indices else "none"
             self.logger.info(f"    Existing smali directories: {dirs_str}")
 
-        return existing_smali, smali_dirs
+        return smali_indices
 
-    def _get_target_directory(self, target_dex_index, existing_smali):
+    @staticmethod
+    def _parse_smali_index(dir_name: str) -> Optional[int]:
+        if dir_name == "smali":
+            return 1
+        elif dir_name.startswith("smali_classes"):
+            try:
+                return int(dir_name.replace("smali_classes", ""))
+            except ValueError:
+                return None
+        return None
+
+    @staticmethod
+    def _format_index(index: int) -> str:
+        return "" if index == 1 else f"_classes{index}"
+
+    def _get_target_directory(self, target_dex_index: int, existing_smali: List[str]) -> Path:
         if target_dex_index == 1:
             target_dir = self.modded_dir / "smali"
         else:
@@ -91,7 +93,7 @@ class SmaliDecompiler:
 
         return target_dir
 
-    def _get_auto_detected_directory(self, smali_dirs, file_index):
+    def _get_auto_detected_directory(self, smali_dirs: List[int], file_index: int) -> Path:
         if file_index == 0:
             if not smali_dirs:
                 return self.modded_dir / "smali"
@@ -157,7 +159,7 @@ class SmaliDecompiler:
 
         return 21
 
-    def _print_summary(self, dex_files, created_dirs):
+    def _print_summary(self, dex_files: List[Path], created_dirs: set):
         if not self.logger:
             return
 
