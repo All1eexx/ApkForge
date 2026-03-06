@@ -79,6 +79,4 @@ class ApkBuilder:
     def _check_result(result, step_name):
         if result.returncode != 0:
             error_msg = result.stderr if result.stderr else result.stdout
-            if error_msg and len(error_msg) > 500:
-                error_msg = error_msg[:500] + "..."
             raise RuntimeError(f"{step_name} failed: {error_msg}")
