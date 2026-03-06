@@ -346,8 +346,6 @@ def run_java_tool(cmd, error_prefix: str, tool_name: str = "java"):
 
         if result.returncode != 0:
             error_msg = result.stderr if result.stderr else result.stdout
-            if error_msg and len(error_msg) > 500:
-                error_msg = error_msg[:500] + "..."
             raise RuntimeError(f"{error_prefix}: {error_msg}")
 
         return result
